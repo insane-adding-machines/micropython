@@ -2,7 +2,6 @@
 include ../py/mkenv.mk
 
 FROZEN_DIR = scripts
-
 # define main target
 PROG = micropython
 
@@ -101,7 +100,13 @@ SRC_MOD += modsocket.c
 endif
 ifeq ($(MICROPY_PY_THREAD),1)
 CFLAGS_MOD += -DMICROPY_PY_THREAD=1 -DMICROPY_PY_THREAD_GIL=0
+ifneq ($(MICROPY_FROSTED),1)
 LDFLAGS_MOD += -lpthread
+endif
+endif
+
+ifeq ($(MICROPY_FROSTED),1)
+FROZEN_DIR = scripts_frosted
 endif
 
 ifeq ($(MICROPY_PY_FFI),1)
@@ -239,6 +244,33 @@ freedos:
 	MICROPY_PY_BTREE=0 \
 	MICROPY_PY_THREAD=0 \
 	MICROPY_PY_USSL=0
+
+
+frosted:
+	$(MAKE) \
+	CC=arm-frosted-eabi-gcc \
+	STRIP=arm-frosted-eabi-flthdr \
+	SIZE=echo \
+	CFLAGS_EXTRA='-DMP_CONFIGFILE="<mpconfigport_frosted.h>" -mthumb' \
+	CFLAGS_EXTRA+='-mlittle-endian -mthumb-interwork -ffunction-sections -mcpu=cortex-m3' \
+	CFLAGS_EXTRA+='-DCORE_M3 -D__frosted__' \
+	CFLAGS_EXTRA+='-DMICROPY_PY_SYS_PATH_DEFAULT=\"/bin\"' \
+	BUILD=build-frosted \
+	PROG=micropython_frosted \
+	MICROPY_PY_OS=1 \
+	MICROPY_PY_SOCKET=1 \
+	MICROPY_PY_TERMIOS=0 \
+	MICROPY_PY_THREAD=1 \
+	MICROPY_PY_FATFS=0 \
+	MICROPY_PY_FFI=0 \
+	MICROPY_PY_JNI=0 \
+	MICROPY_PY_BTREE=0 \
+	MICROPY_PY_STANDALONE=0 \
+	MICROPY_USE_READLINE=0 \
+	MICROPY_FORCE_32BIT=1 \
+	MICROPY_PY_USSL=0 \
+	MICROPY_FROSTED=1 \
+	LDFLAGS_EXTRA='-fPIC -mlong-calls -fno-common -Wl,-elf2flt -lgloss -nostartfiles'
 
 # build an interpreter for coverage testing and do the testing
 coverage:

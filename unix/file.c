@@ -43,6 +43,9 @@
 #ifdef _WIN32
 #define fsync _commit
 #endif
+#ifdef __frosted__
+#define fsync(x) ((0))
+#endif
 
 #ifdef MICROPY_CPYTHON_COMPAT
 STATIC void check_fd_is_open(const mp_obj_fdfile_t *o) {

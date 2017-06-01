@@ -49,6 +49,39 @@ typedef struct _mmap_region_t {
     struct _mmap_region_t *next;
 } mmap_region_t;
 
+
+#ifdef __frosted__
+void mp_unix_alloc_exec(mp_uint_t min_size, void **ptr, mp_uint_t *size) {
+    // size needs to be a multiple of the page size
+    *size = (min_size + 0xfff) & (~0xfff);
+    *ptr = malloc(*size);
+    if(!ptr)
+        return;
+
+    // add new link to the list of mmap'd regions
+    mmap_region_t *rg = m_new_obj(mmap_region_t);
+    rg->ptr = *ptr;
+    rg->len = min_size;
+    rg->next = MP_STATE_VM(mmap_region_head);
+    MP_STATE_VM(mmap_region_head) = rg;
+}
+
+void mp_unix_free_exec(void *ptr, mp_uint_t size) {
+    free(ptr);
+
+    // unlink the mmap'd region from the list
+    for (mmap_region_t **rg = (mmap_region_t**)&MP_STATE_VM(mmap_region_head); *rg != NULL; *rg = (*rg)->next) {
+        if ((*rg)->ptr == ptr) {
+            mmap_region_t *next = (*rg)->next;
+            m_del_obj(mmap_region_t, *rg);
+            *rg = next;
+            return;
+        }
+    }
+}
+
+#else
+
 void mp_unix_alloc_exec(mp_uint_t min_size, void **ptr, mp_uint_t *size) {
     // size needs to be a multiple of the page size
     *size = (min_size + 0xfff) & (~0xfff);
@@ -78,6 +111,7 @@ void mp_unix_free_exec(void *ptr, mp_uint_t size) {
         }
     }
 }
+#endif
 
 void mp_unix_mark_exec(void) {
     for (mmap_region_t *rg = MP_STATE_VM(mmap_region_head); rg != NULL; rg = rg->next) {
